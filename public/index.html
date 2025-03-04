@@ -1,11 +1,205 @@
+// index.html (place in a 'public' directory)
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Koyeb Pinger UI</title>
+    <title>Koyeb App Pinger</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        input[type="text"] {
+            width: calc(100% - 22px); /* Adjust for padding and border */
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button.remove-btn {
+          background-color: #f44336;
+        }
+        button.remove-btn:hover {
+          background-color: #d32f2f;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            padding: 8px;
+            margin-bottom: 4px;
+            background-color: #eee;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .message {
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-    <div id="root"></div>
+    <div class="container">
+        <h1>Koyeb App Pinger</h1>
+
+        <input type="text" id="appUrl" placeholder="Enter Koyeb app URL (e.g., https://myapp.koyeb.app)">
+        <button onclick="addApp()">Add App</button>
+
+        <div id="message" class="message hidden"></div>
+
+        <h2>Apps to Ping</h2>
+        <ul id="appList">
+            </ul>
+    </div>
+
+    <script>
+        async function fetchApps() {
+            const response = await fetch('/apps');
+            if (!response.ok) {
+                showMessage(`Error: ${response.status}`, 'error');
+                return;
+            }
+            const apps = await response.json();
+            const appList = document.getElementById('appList');
+            appList.innerHTML = ''; // Clear existing list
+            apps.forEach(url => {
+                const listItem = document.createElement('li');
+
+                const urlSpan = document.createElement('span');
+                urlSpan.textContent = url;
+                urlSpan.style.flexGrow = 1; // Make the URL span take up available space
+                listItem.appendChild(urlSpan);
+
+                const removeButton = document.createElement('button');
+                removeButton.textContent = 'Remove';
+                removeButton.classList.add('remove-btn'); // Add the remove-btn class
+                removeButton.onclick = () => removeApp(url);
+                listItem.appendChild(removeButton);
+
+                appList.appendChild(listItem);
+            });
+        }
+
+        async function addApp() {
+            const appUrlInput = document.getElementById('appUrl');
+            const appUrl = appUrlInput.value.trim();
+
+            if (!appUrl) {
+                showMessage('Please enter a URL.', 'error');
+                return;
+            }
+
+           // Basic URL validation (starts with http:// or https://)
+            if (!/^(https?:\/\/)/.test(appUrl)) {
+              showMessage('Invalid URL.  Must start with http:// or https://', 'error');
+              return;
+            }
+
+            const response = await fetch('/apps', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ url: appUrl }),
+            });
+
+            if (response.ok) {
+                showMessage('App added successfully!', 'success');
+                appUrlInput.value = ''; // Clear input field
+                fetchApps(); // Refresh the list
+            } else if (response.status === 400) {
+              const data = await response.json();
+              showMessage(data.detail, 'error');  //show the "app already exists"
+            }
+            else {
+                showMessage(`Error: ${response.status}`, 'error');
+            }
+        }
+
+        async function removeApp(appUrl) {
+            const response = await fetch('/apps', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ url: appUrl }),
+            });
+
+            if (response.ok) {
+                showMessage('App removed successfully!', 'success');
+                fetchApps(); // Refresh the list
+            }
+            else if (response.status === 404){
+              const data = await response.json();
+              showMessage(data.detail, 'error');
+            }
+            else {
+                showMessage(`Error: ${response.status}`, 'error');
+            }
+        }
+
+
+      function showMessage(message, type) {
+        const messageDiv = document.getElementById('message');
+        messageDiv.textContent = message;
+        messageDiv.className = `message ${type}`; // Set class based on type
+        messageDiv.classList.remove('hidden');
+
+        // Hide the message after 5 seconds
+        setTimeout(() => {
+          messageDiv.classList.add('hidden');
+        }, 5000);
+      }
+
+
+        // Initial fetch of apps on page load
+        document.addEventListener('DOMContentLoaded', fetchApps);
+
+    </script>
 </body>
 </html>
