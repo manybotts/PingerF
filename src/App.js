@@ -4,84 +4,106 @@ function App() {
   const [appUrl, setAppUrl] = useState('');
   const [apps, setApps] = useState([]);
   const [message, setMessage] = useState({ text: '', type: '' });
-
-  // --- IMPORTANT: Replace with your Railway backend URL ---
-  const backendUrl = 'YOUR_RAILWAY_BACKEND_URL'; // e.g., 'https://my-pinger-backend.up.railway.app'
+  const [backendUrl, setBackendUrl] = useState(''); // Add state for backend URL
 
   useEffect(() => {
-    fetchApps();
-  }, []); // Run fetchApps once on component mount
+    async function getBackendURL() {
+      try {
+        //  Get the Railway backend's URL
+        const urlResponse = await fetch("/backend_url"); //fetch from the new end point.
+        if(!urlResponse.ok){
+          throw new Error(`Error fetching backend URL: ${urlResponse.status}`)
+        }
+        const urlData = await urlResponse.json();
+        setBackendUrl(urlData.backend_url); //set the state.
+      }
+      catch (error){
+        showMessage(error.message, 'error')
+      }
+    }
+     getBackendURL() // Call the function to get the backend URL
+  }, []); // Run once on mount
+
+  useEffect(() => {
+    if (backendUrl) { // Only fetch apps once backendUrl is set
+      fetchApps();
+    }
+  }, [backendUrl]); // Run fetchApps when backendUrl changes
+
 
   async function fetchApps() {
-    try {
-      const response = await fetch(`${backendUrl}/apps`);
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
+      try {
+        const response = await fetch(`${backendUrl}apps`);
+        if (!response.ok) {
+          // Check for non-200 status codes *before* parsing as JSON
+          const errorText = await response.text(); // Get the raw response text
+          throw new Error(`HTTP Error ${response.status}: ${errorText}`); // Include status and text
+        }
+        const data = await response.json();
+        setApps(data);
+      } catch (error) {
+        showMessage(error.message, 'error'); // Show the detailed error message
       }
-      const data = await response.json();
-      setApps(data);
-    } catch (error) {
-      showMessage(error.message, 'error');
     }
-  }
 
   async function addApp() {
-    if (!appUrl) {
-      showMessage('Please enter a URL.', 'error');
-      return;
-    }
-    if (!/^(https?:\/\/)/.test(appUrl)) {
-      showMessage('Invalid URL.  Must start with http:// or https://', 'error');
-      return;
-    }
-
-    try {
-      const response = await fetch(`${backendUrl}/apps`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url: appUrl }),
-      });
-
-      if (response.ok) {
-        showMessage('App added successfully!', 'success');
-        setAppUrl(''); // Clear input
-        fetchApps(); // Refresh list
-      }  else if (response.status === 400) {
-        const data = await response.json();
-        showMessage(data.detail, 'error');
-      }else {
-        throw new Error(`Error: ${response.status}`);
+      if (!appUrl) {
+        showMessage('Please enter a URL.', 'error');
+        return;
       }
-    } catch (error) {
-      showMessage(error.message, 'error');
+      if (!/^(https?:\/\/)/.test(appUrl)) {
+        showMessage('Invalid URL.  Must start with http:// or https://', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${backendUrl}apps`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url: appUrl }),
+        });
+
+        if (response.ok) {
+            showMessage('App added successfully!', 'success');
+            setAppUrl(''); // Clear input
+            fetchApps(); // Refresh list
+          } else if (response.status === 400) {
+            const data = await response.json();
+            showMessage(data.detail, 'error');
+          }
+           else {
+            throw new Error(`Error: ${response.status}`);
+          }
+      } catch (error) {
+        showMessage(error.message, 'error');
+      }
     }
-  }
 
   async function removeApp(urlToRemove) {
-    try {
-      const response = await fetch(`${backendUrl}/apps`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url: urlToRemove }),
-      });
+     try {
+        const response = await fetch(`${backendUrl}apps`, {
+          method: 'DELETE',
+          headers: {
+              'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ url: urlToRemove }),
+        });
 
-      if (response.ok) {
-        showMessage('App removed successfully!', 'success');
-        fetchApps();
-      } else if(response.status === 404){
-          const data = await response.json();
-          showMessage(data.detail, 'error');
+        if (response.ok) {
+          showMessage('App removed successfully!', 'success');
+          fetchApps();
+        } else if(response.status === 404){
+            const data = await response.json();
+            showMessage(data.detail, 'error');
+        }
+         else {
+          throw new Error(`Error: ${response.status}`);
+        }
+      } catch (error) {
+        showMessage(error.message, 'error');
       }
-       else {
-        throw new Error(`Error: ${response.status}`);
-      }
-    } catch (error) {
-      showMessage(error.message, 'error');
-    }
   }
 
   function showMessage(text, type) {
@@ -122,5 +144,4 @@ function App() {
     </div>
   );
 }
-
 export default App;
