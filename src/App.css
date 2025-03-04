@@ -1,0 +1,76 @@
+/* (Same CSS as before - included for completeness) */
+body {
+    font-family: sans-serif;
+    margin: 20px;
+    background-color: #f4f4f4;
+}
+.container {
+    max-width: 800px;
+    margin: auto;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+h1 {
+    color: #333;
+    text-align: center;
+}
+input[type="text"] {
+    width: calc(100% - 22px); /* Adjust for padding and border */
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+button {
+    padding: 10px 15px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 5px;
+}
+button:hover {
+    background-color: #45a049;
+}
+button.remove-btn {
+  background-color: #f44336;
+}
+button.remove-btn:hover {
+  background-color: #d32f2f;
+}
+
+ul {
+    list-style: none;
+    padding: 0;
+}
+li {
+    padding: 8px;
+    margin-bottom: 4px;
+    background-color: #eee;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.message {
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 4px;
+}
+.success {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+.error {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+.hidden {
+    display: none;
+}
