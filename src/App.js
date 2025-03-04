@@ -1,58 +1,126 @@
-// src/App.js
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || "https://your-railway-backend-url";
+import React, { useState, useEffect } from 'react';
 
 function App() {
-    const [apps, setApps] = useState([]);
-    const [newAppUrl, setNewAppUrl] = useState("");
+  const [appUrl, setAppUrl] = useState('');
+  const [apps, setApps] = useState([]);
+  const [message, setMessage] = useState({ text: '', type: '' });
 
-    useEffect(() => {
-        axios.get(`${API_BASE_URL}/apps`)
-            .then((response) => setApps(response.data))
-            .catch((error) => console.error("Error fetching apps:", error));
-    }, []);
+  // --- IMPORTANT: Replace with your Railway backend URL ---
+  const backendUrl = 'YOUR_RAILWAY_BACKEND_URL'; // e.g., 'https://my-pinger-backend.up.railway.app'
 
-    const addApp = () => {
-        if (newAppUrl) {
-            axios.post(`${API_BASE_URL}/apps`, { url: newAppUrl })
-                .then(() => {
-                    setApps([...apps, newAppUrl]);
-                    setNewAppUrl("");
-                })
-                .catch((error) => console.error("Error adding app:", error));
-        }
-    };
+  useEffect(() => {
+    fetchApps();
+  }, []); // Run fetchApps once on component mount
 
-    const removeApp = (url) => {
-        axios.delete(`${API_BASE_URL}/apps`, { data: { url } })
-            .then(() => {
-                setApps(apps.filter((app) => app !== url));
-            })
-            .catch((error) => console.error("Error removing app:", error));
-    };
+  async function fetchApps() {
+    try {
+      const response = await fetch(`${backendUrl}/apps`);
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+      const data = await response.json();
+      setApps(data);
+    } catch (error) {
+      showMessage(error.message, 'error');
+    }
+  }
 
-    return (
-        <div style={{ padding: "20px", fontFamily: "Arial", textAlign: "center" }}>
-            <h2>Koyeb App Pinger</h2>
-            <input
-                type="text"
-                placeholder="Enter Koyeb App URL"
-                value={newAppUrl}
-                onChange={(e) => setNewAppUrl(e.target.value)}
-                style={{ padding: "10px", width: "300px", marginRight: "10px" }}
-            />
-            <button onClick={addApp} style={{ padding: "10px" }}>Add</button>
-            <ul style={{ marginTop: "20px", listStyle: "none" }}>
-                {apps.map((app, index) => (
-                    <li key={index} style={{ padding: "10px", borderBottom: "1px solid gray" }}>
-                        {app} <button onClick={() => removeApp(app)} style={{ marginLeft: "10px" }}>Remove</button>
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
+  async function addApp() {
+    if (!appUrl) {
+      showMessage('Please enter a URL.', 'error');
+      return;
+    }
+    if (!/^(https?:\/\/)/.test(appUrl)) {
+      showMessage('Invalid URL.  Must start with http:// or https://', 'error');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${backendUrl}/apps`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: appUrl }),
+      });
+
+      if (response.ok) {
+        showMessage('App added successfully!', 'success');
+        setAppUrl(''); // Clear input
+        fetchApps(); // Refresh list
+      }  else if (response.status === 400) {
+        const data = await response.json();
+        showMessage(data.detail, 'error');
+      }else {
+        throw new Error(`Error: ${response.status}`);
+      }
+    } catch (error) {
+      showMessage(error.message, 'error');
+    }
+  }
+
+  async function removeApp(urlToRemove) {
+    try {
+      const response = await fetch(`${backendUrl}/apps`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: urlToRemove }),
+      });
+
+      if (response.ok) {
+        showMessage('App removed successfully!', 'success');
+        fetchApps();
+      } else if(response.status === 404){
+          const data = await response.json();
+          showMessage(data.detail, 'error');
+      }
+       else {
+        throw new Error(`Error: ${response.status}`);
+      }
+    } catch (error) {
+      showMessage(error.message, 'error');
+    }
+  }
+
+  function showMessage(text, type) {
+    setMessage({ text, type });
+    setTimeout(() => setMessage({ text: '', type: '' }), 5000); // Hide after 5s
+  }
+
+  return (
+    <div className="container">
+      <h1>Koyeb App Pinger</h1>
+
+      <div>
+        <input
+          type="text"
+          id="appUrl"
+          placeholder="Enter Koyeb app URL (e.g., https://myapp.koyeb.app)"
+          value={appUrl}
+          onChange={(e) => setAppUrl(e.target.value)}
+        />
+        <button onClick={addApp}>Add App</button>
+      </div>
+
+      {message.text && (
+        <div className={`message ${message.type}`}>{message.text}</div>
+      )}
+
+      <h2>Apps to Ping</h2>
+      <ul>
+        {apps.map((url) => (
+          <li key={url}>
+            <span>{url}</span>
+            <button className="remove-btn" onClick={() => removeApp(url)}>
+              Remove
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 export default App;
